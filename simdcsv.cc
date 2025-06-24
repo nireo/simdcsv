@@ -1,4 +1,6 @@
 
+#include "simdcsv.h"
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -9,6 +11,38 @@ static uint32_t find_commas(const __m256i chunk) {
   __m256i cmp = _mm256_cmpeq_epi8(chunk, comma);
 
   return _mm256_movemask_epi8(cmp);
+}
+
+static uint32_t find_newlines(const __m256i chunk) {
+  __m256i nl = _mm256_set1_epi8('\n');
+  __m256i cmp = _mm256_cmpeq_epi8(chunk, nl);
+
+  return _mm256_movemask_epi8(cmp);
+}
+
+void simdcsv::parser::process_bitmask(uint32_t mask, size_t base_offset,
+                                      std::vector<size_t> &positions) {
+  while (mask) {
+    int bit_pos = __builtin_ctz(mask); // Count trailing zeros
+    positions.push_back(base_offset + bit_pos);
+
+    mask &= (mask - 1);
+  }
+}
+
+void simdcsv::parser::parse() {
+  const size_t CHUNK_SIZE = 32;
+
+  for (size_t pos = 0; pos + CHUNK_SIZE <= buffer_size; pos += CHUNK_SIZE) {
+    __m256i chunk = _mm256_loadu_si256((__m256i *)(buffer + pos));
+
+    uint32_t comma_mask = find_commas(chunk);
+    uint32_t newline_mask = find_newlines(chunk);
+
+    process_bitmask(comma_mask, pos, comma_pos);
+    process_bitmask(newline_mask, pos, nl_pos);
+  }
+  // TODO: handle the rest of the bytes that are not aligned to 32
 }
 
 void print_bitmask(uint32_t mask, const char *test_data) {
@@ -22,14 +56,6 @@ void print_bitmask(uint32_t mask, const char *test_data) {
     }
   }
   printf("\n");
-
-  printf("Visual:    ");
-  for (int i = 0; i < 32; i++) {
-    if (test_data[i] == '\0')
-      break;
-    printf("%c", (mask & (1U << i)) ? '^' : ' ');
-  }
-  printf("\n\n");
 }
 
 int main() {
