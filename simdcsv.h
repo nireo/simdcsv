@@ -113,7 +113,7 @@ struct parser {
       }
     }
 
-    if (boundaries.back() <= buffer_size) {
+    if (boundaries.empty() || boundaries.back() < buffer_size) {
       boundaries.push_back(buffer_size);
     }
 
