@@ -7,17 +7,6 @@
 #include <iostream>
 #include <string>
 
-simdcsv::row simdcsv::parser::row_iterator::operator*() const {
-  if (current_row_index_ >= row_boundaries_.size() - 1) {
-    return row(parser_, parser_->buffer_size, parser_->buffer_size);
-  }
-
-  size_t start_pos = row_boundaries_[current_row_index_];
-  size_t end_pos = row_boundaries_[current_row_index_ + 1];
-
-  return row(parser_, start_pos, end_pos);
-}
-
 bool test_basic_csv() {
   std::cout << "Testing basic CSV..." << std::endl;
 
